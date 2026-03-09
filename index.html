@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>Lingua Pharmacia Talkback</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        /* This keeps our screens hidden until we want to show them */
+        .screen { display: none; }
+        .screen.active { display: block; }
+        
+        img {
+            max-width: 90%;
+            height: auto;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+            transition: background-color 0.3s;
+        }
+        button:hover { background-color: #0056b3; }
+        
+        /* Specific styling for the lesson menu buttons */
+        .lesson-btn {
+            display: block;
+            width: 80%;
+            max-width: 300px;
+            margin: 12px auto;
+            background-color: #28a745;
+        }
+        .lesson-btn:hover { background-color: #218838; }
+        .lesson-btn:disabled {
+            background-color: #cccccc;
+            color: #666666;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="welcome-screen" class="screen active">
+        <img src="logo.png" alt="Lingua Pharmacia Logo">
+        <br>
+        <button onclick="showScreen('instructions-screen')">Continue</button>
+    </div>
+
+    <div id="instructions-screen" class="screen">
+        <img src="instructions.png" alt="App Instructions">
+        <br>
+        <button onclick="showScreen('menu-screen')">Continue</button>
+    </div>
+
+    <div id="menu-screen" class="screen">
+        <h2>Select a Lesson</h2>
+        <div id="lesson-list">
+            </div>
+    </div>
+
+    <script>
+        // This function changes which screen the student is looking at
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        // The list of all your modules
+        const lessons = [
+            "1", "2", "3", "4", "5", "6", "7", "8", "9", "10A", "10B",
+            "11", "12", "13", "14", "15", "16", "17", "18", "19"
+        ];
+
+        // This checks the student's phone to see which lessons they have unlocked.
+        // If it's their first time, it defaults to unlocking only Lesson 1.
+        let unlockedLessons = JSON.parse(localStorage.getItem('unlockedLessons')) || ['1'];
+
+        const lessonList = document.getElementById('lesson-list');
+
+        // This loop builds the 20 buttons on the menu screen
+        lessons.forEach(lesson => {
+            const btn = document.createElement('button');
+            btn.className = 'lesson-btn';
+            btn.innerText = `Lesson ${lesson}`;
+            
+            if (unlockedLessons.includes(lesson)) {
+                // If unlocked, clicking it will eventually load the game
+                btn.onclick = () => alert(`We will load Lesson ${lesson} here in the next step!`);
+            } else {
+                // If locked, grays out the button
+                btn.disabled = true;
+            }
+            
+            lessonList.appendChild(btn);
+        });
+    </script>
+</body>
+</html>
