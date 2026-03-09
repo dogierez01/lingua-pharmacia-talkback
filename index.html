@@ -13,8 +13,6 @@
             margin: 0;
             padding: 20px;
         }
-        
-        /* This keeps our screens hidden until we want to show them */
         .screen { display: none; }
         .screen.active { display: block; }
         
@@ -40,7 +38,6 @@
         }
         button:hover { background-color: #0056b3; }
         
-        /* Specific styling for the lesson menu buttons */
         .lesson-btn {
             display: block;
             width: 80%;
@@ -53,65 +50,318 @@
             background-color: #cccccc;
             color: #666666;
             cursor: not-allowed;
-            box-shadow: none;
+        }
+
+        /* Game Screen Styles */
+        #turkish-sentence {
+            font-size: 24px;
+            margin: 30px 0;
+            color: #333;
+        }
+        #mic-btn {
+            background-color: #dc3545;
+            border-radius: 50px;
+            padding: 20px 40px;
+        }
+        #mic-btn.listening {
+            background-color: #ffc107;
+            color: black;
+            animation: pulse 1.5s infinite;
+        }
+        #recognized-text {
+            font-size: 18px;
+            color: #555;
+            min-height: 30px;
+            margin: 20px 0;
+        }
+        #feedback {
+            font-size: 20px;
+            font-weight: bold;
+            min-height: 30px;
+        }
+        .correct { color: #28a745; }
+        .incorrect { color: #dc3545; }
+        #score-board {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
         }
     </style>
 </head>
 <body>
 
     <div id="welcome-screen" class="screen active">
-        <img src="logo.png" alt="Lingua Pharmacia Logo">
-        <br>
+        <img src="logo.png" alt="Lingua Pharmacia Logo" onerror="this.style.display='none'">
+        <h1>Welcome!</h1>
         <button onclick="showScreen('instructions-screen')">Continue</button>
     </div>
 
     <div id="instructions-screen" class="screen">
-        <img src="instructions.png" alt="App Instructions">
-        <br>
+        <img src="instructions.png" alt="App Instructions" onerror="this.style.display='none'">
+        <h2>How to play:</h2>
+        <p>1. Read the Turkish sentence.<br>2. Tap the microphone.<br>3. Speak the English translation.<br>4. Score 15/20 to unlock the next lesson!</p>
         <button onclick="showScreen('menu-screen')">Continue</button>
     </div>
 
     <div id="menu-screen" class="screen">
         <h2>Select a Lesson</h2>
-        <div id="lesson-list">
-            </div>
+        <div id="lesson-list"></div>
+    </div>
+
+    <div id="game-screen" class="screen">
+        <button onclick="showScreen('menu-screen')" style="padding: 10px; font-size: 14px; background: #6c757d;">Back to Menu</button>
+        <h2 id="lesson-title">Lesson</h2>
+        <div id="score-board">Score: <span id="current-score">0</span> / 20</div>
+        
+        <div id="turkish-sentence">Loading...</div>
+        
+        <button id="mic-btn" onclick="toggleMic()">🎤 Tap to Speak</button>
+        
+        <div id="recognized-text"></div>
+        <div id="feedback"></div>
+        
+        <button id="next-btn" onclick="nextSentence()" style="display:none;">Next Sentence ➡️</button>
+        <button id="finish-btn" onclick="finishLesson()" style="display:none; background-color: #28a745;">Finish Lesson 🎉</button>
     </div>
 
     <script>
-        // This function changes which screen the student is looking at
+        // --- Navigation Logic ---
         function showScreen(screenId) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(screenId).classList.add('active');
+            if(screenId === 'menu-screen') buildMenu();
         }
 
-        // The list of all your modules
-        const lessons = [
-            "1", "2", "3", "4", "5", "6", "7", "8", "9", "10A", "10B",
-            "11", "12", "13", "14", "15", "16", "17", "18", "19"
-        ];
-
-        // This checks the student's phone to see which lessons they have unlocked.
-        // If it's their first time, it defaults to unlocking only Lesson 1.
+        const lessons = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10A", "10B", "11", "12", "13", "14", "15", "16", "17", "18", "19"];
         let unlockedLessons = JSON.parse(localStorage.getItem('unlockedLessons')) || ['1'];
 
-        const lessonList = document.getElementById('lesson-list');
+        function buildMenu() {
+            const lessonList = document.getElementById('lesson-list');
+            lessonList.innerHTML = ''; 
+            lessons.forEach(lesson => {
+                const btn = document.createElement('button');
+                btn.className = 'lesson-btn';
+                btn.innerText = `Lesson ${lesson}`;
+                
+                if (unlockedLessons.includes(lesson)) {
+                    btn.onclick = () => startLesson(lesson);
+                } else {
+                    btn.disabled = true;
+                    btn.innerText += " 🔒";
+                }
+                lessonList.appendChild(btn);
+            });
+        }
 
-        // This loop builds the 20 buttons on the menu screen
-        lessons.forEach(lesson => {
-            const btn = document.createElement('button');
-            btn.className = 'lesson-btn';
-            btn.innerText = `Lesson ${lesson}`;
-            
-            if (unlockedLessons.includes(lesson)) {
-                // If unlocked, clicking it will eventually load the game
-                btn.onclick = () => alert(`We will load Lesson ${lesson} here in the next step!`);
-            } else {
-                // If locked, grays out the button
-                btn.disabled = true;
+        // --- Game Logic ---
+        let currentPairs = [];
+        let currentIndex = 0;
+        let score = 0;
+        let currentLessonId = "";
+
+        // Custom CSV parser to handle sentences wrapped in quotes
+        function parseCSVLine(text) {
+            let ret = [], inQuote = false, value = '';
+            for (let ch of text) {
+                if (inQuote) {
+                    if (ch === '"') inQuote = false;
+                    else value += ch;
+                } else {
+                    if (ch === '"') inQuote = true;
+                    else if (ch === ',') { ret.push(value.trim()); value = ''; }
+                    else value += ch;
+                }
             }
+            ret.push(value.trim());
+            return ret;
+        }
+
+        async function startLesson(lessonId) {
+            currentLessonId = lessonId;
+            showScreen('game-screen');
+            document.getElementById('lesson-title').innerText = `Lesson ${lessonId}`;
+            document.getElementById('turkish-sentence').innerText = "Loading sentences...";
             
-            lessonList.appendChild(btn);
-        });
+            // Reset game states
+            currentIndex = 0;
+            score = 0;
+            updateScore();
+            hideButtons();
+            
+            try {
+                // Fetch the specific CSV file from your repo
+                const response = await fetch(`lesson${lessonId.toLowerCase()}.csv`);
+                if (!response.ok) throw new Error("File not found");
+                const csvText = await response.text();
+                
+                // Parse CSV
+                const lines = csvText.split('\n').filter(line => line.trim() !== '');
+                currentPairs = [];
+                
+                // Skip the header row (index 0), start at 1
+                for (let i = 1; i < lines.length; i++) {
+                    const parsed = parseCSVLine(lines[i]);
+                    if (parsed.length >= 2) {
+                        currentPairs.push({
+                            turkish: parsed[0],
+                            english: parsed[1]
+                        });
+                    }
+                }
+                
+                loadSentence();
+            } catch (error) {
+                document.getElementById('turkish-sentence').innerText = "Error loading lesson data. Make sure your CSV file is named correctly!";
+                console.error(error);
+            }
+        }
+
+        function loadSentence() {
+            if (currentIndex >= currentPairs.length) return;
+            hideButtons();
+            document.getElementById('turkish-sentence').innerText = currentPairs[currentIndex].turkish;
+            document.getElementById('recognized-text').innerText = "";
+            document.getElementById('feedback').innerText = "";
+            document.getElementById('feedback').className = "";
+        }
+
+        function updateScore() {
+            document.getElementById('current-score').innerText = score;
+        }
+
+        function hideButtons() {
+            document.getElementById('next-btn').style.display = 'none';
+            document.getElementById('finish-btn').style.display = 'none';
+            document.getElementById('mic-btn').style.display = 'inline-block';
+        }
+
+        function nextSentence() {
+            currentIndex++;
+            if (currentIndex < currentPairs.length) {
+                loadSentence();
+            } else {
+                showFinish();
+            }
+        }
+
+        function showFinish() {
+            hideButtons();
+            document.getElementById('mic-btn').style.display = 'none';
+            document.getElementById('turkish-sentence').innerText = "Lesson Complete!";
+            document.getElementById('finish-btn').style.display = 'inline-block';
+        }
+
+        function finishLesson() {
+            if (score >= 15) {
+                alert(`Amazing! You scored ${score}/20. You unlocked the next lesson!`);
+                // Find next lesson and unlock it
+                const currentIdx = lessons.indexOf(currentLessonId);
+                if (currentIdx < lessons.length - 1) {
+                    const nextLesson = lessons[currentIdx + 1];
+                    if (!unlockedLessons.includes(nextLesson)) {
+                        unlockedLessons.push(nextLesson);
+                        localStorage.setItem('unlockedLessons', JSON.stringify(unlockedLessons));
+                    }
+                }
+            } else {
+                alert(`You scored ${score}/20. You need 15 correct to pass. Keep practicing!`);
+            }
+            showScreen('menu-screen');
+        }
+
+        // --- Speech Recognition Logic ---
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+        let isListening = false;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            recognition.onstart = function() {
+                isListening = true;
+                const micBtn = document.getElementById('mic-btn');
+                micBtn.innerText = "Listening...";
+                micBtn.classList.add('listening');
+                document.getElementById('recognized-text').innerText = "";
+            };
+
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById('recognized-text').innerText = "You said: " + transcript;
+                checkAnswer(transcript);
+            };
+
+            recognition.onerror = function(event) {
+                alert("Microphone error: " + event.error);
+                stopMic();
+            };
+
+            recognition.onend = function() {
+                stopMic();
+            };
+        } else {
+            alert("Speech Recognition is not supported in this browser. Please use Google Chrome.");
+        }
+
+        function toggleMic() {
+            if (!recognition) return alert("Browser not supported.");
+            if (isListening) {
+                recognition.stop();
+            } else {
+                recognition.start();
+            }
+        }
+
+        function stopMic() {
+            isListening = false;
+            const micBtn = document.getElementById('mic-btn');
+            micBtn.innerText = "🎤 Tap to Speak";
+            micBtn.classList.remove('listening');
+        }
+
+        // Helper to strip punctuation and lower case for fair grading
+        function normalizeText(text) {
+            return text.toLowerCase().replace(/[.,?!\(\)]/g, "").trim();
+        }
+
+        function checkAnswer(spokenText) {
+            const correctEnglish = currentPairs[currentIndex].english;
+            
+            const normalizedSpoken = normalizeText(spokenText);
+            const normalizedCorrect = normalizeText(correctEnglish);
+
+            const feedbackDiv = document.getElementById('feedback');
+            document.getElementById('mic-btn').style.display = 'none';
+
+            if (normalizedSpoken === normalizedCorrect) {
+                feedbackDiv.innerText = "✅ Correct!";
+                feedbackDiv.className = "correct";
+                score++;
+                updateScore();
+            } else {
+                feedbackDiv.innerText = "❌ Incorrect. The correct answer is:\n" + correctEnglish;
+                feedbackDiv.className = "incorrect";
+            }
+
+            if (currentIndex < currentPairs.length - 1) {
+                document.getElementById('next-btn').style.display = 'inline-block';
+            } else {
+                document.getElementById('next-btn').style.display = 'none';
+                showFinish();
+            }
+        }
+
+        // Initialize menu on load
+        buildMenu();
     </script>
 </body>
 </html>
