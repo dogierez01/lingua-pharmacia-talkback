@@ -6,10 +6,12 @@
     <meta name="google" content="notranslate">
     <title>Lingua Pharmacia Talkback</title>
     <style>
+        /* Dark Mode Styling */
         body {
             font-family: Arial, sans-serif;
             text-align: center;
-            background-color: #f4f4f9;
+            background-color: #000000;
+            color: #ffffff;
             margin: 0;
             padding: 20px;
         }
@@ -21,7 +23,7 @@
             height: auto;
             border-radius: 10px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 8px rgba(255,255,255,0.1);
         }
         
         button {
@@ -47,8 +49,8 @@
         }
         .lesson-btn:hover { background-color: #218838; }
         .lesson-btn:disabled {
-            background-color: #cccccc;
-            color: #666666;
+            background-color: #444444;
+            color: #888888;
             cursor: not-allowed;
         }
 
@@ -56,7 +58,7 @@
         #turkish-sentence {
             font-size: 24px;
             margin: 30px 0;
-            color: #333;
+            color: #ffffff;
         }
         #mic-btn {
             background-color: #dc3545;
@@ -70,21 +72,39 @@
         }
         #recognized-text {
             font-size: 18px;
-            color: #555;
+            color: #cccccc;
             min-height: 30px;
             margin: 20px 0;
         }
+        
+        /* Neon Feedback Styling */
         #feedback {
-            font-size: 20px;
+            font-size: 22px;
             font-weight: bold;
-            min-height: 30px;
+            min-height: 60px;
+            margin-top: 10px;
         }
-        .correct { color: #28a745; }
-        .incorrect { color: #dc3545; }
+        .correct { 
+            color: #00ffff; /* Neon Blue */
+            text-shadow: 0 0 8px #00ffff;
+        }
+        .incorrect { 
+            color: #ff9900; /* Neon Orange */
+            text-shadow: 0 0 8px #ff9900;
+        }
+        .correction { 
+            color: #ccff00; /* Neon Yellow */
+            text-shadow: 0 0 8px #ccff00;
+            display: block; 
+            margin-top: 15px; 
+            font-size: 20px;
+        }
+        
         #score-board {
             font-size: 18px;
             font-weight: bold;
             margin-bottom: 20px;
+            color: #ffffff;
         }
         
         @keyframes pulse {
@@ -98,14 +118,13 @@
 
     <div id="welcome-screen" class="screen active">
         <img src="logo.png" alt="Lingua Pharmacia Logo" onerror="this.style.display='none'">
-        <h1>Welcome!</h1>
+        <br>
         <button onclick="showScreen('instructions-screen')">Continue</button>
     </div>
 
     <div id="instructions-screen" class="screen">
         <img src="instructions.png" alt="App Instructions" onerror="this.style.display='none'">
-        <h2>How to play:</h2>
-        <p>1. Read the Turkish sentence.<br>2. Tap the microphone.<br>3. Speak the English translation.<br>4. Score 15/20 to unlock the next lesson!</p>
+        <br>
         <button onclick="showScreen('menu-screen')">Continue</button>
     </div>
 
@@ -165,7 +184,7 @@
         let score = 0;
         let currentLessonId = "";
 
-        // Custom CSV parser to handle sentences wrapped in quotes
+        // Custom CSV parser
         function parseCSVLine(text) {
             let ret = [], inQuote = false, value = '';
             for (let ch of text) {
@@ -182,29 +201,33 @@
             return ret;
         }
 
+        // Randomizer function
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
         async function startLesson(lessonId) {
             currentLessonId = lessonId;
             showScreen('game-screen');
             document.getElementById('lesson-title').innerText = `Lesson ${lessonId}`;
             document.getElementById('turkish-sentence').innerText = "Loading sentences...";
             
-            // Reset game states
             currentIndex = 0;
             score = 0;
             updateScore();
             hideButtons();
             
             try {
-                // Fetch the specific CSV file from your repo
                 const response = await fetch(`lesson${lessonId.toLowerCase()}.csv`);
                 if (!response.ok) throw new Error("File not found");
                 const csvText = await response.text();
                 
-                // Parse CSV
                 const lines = csvText.split('\n').filter(line => line.trim() !== '');
                 currentPairs = [];
                 
-                // Skip the header row (index 0), start at 1
                 for (let i = 1; i < lines.length; i++) {
                     const parsed = parseCSVLine(lines[i]);
                     if (parsed.length >= 2) {
@@ -215,9 +238,12 @@
                     }
                 }
                 
+                // Shuffle the sentences here!
+                shuffleArray(currentPairs);
+                
                 loadSentence();
             } catch (error) {
-                document.getElementById('turkish-sentence').innerText = "Error loading lesson data. Make sure your CSV file is named correctly!";
+                document.getElementById('turkish-sentence').innerText = "Error loading lesson data.";
                 console.error(error);
             }
         }
@@ -227,7 +253,7 @@
             hideButtons();
             document.getElementById('turkish-sentence').innerText = currentPairs[currentIndex].turkish;
             document.getElementById('recognized-text').innerText = "";
-            document.getElementById('feedback').innerText = "";
+            document.getElementById('feedback').innerHTML = "";
             document.getElementById('feedback').className = "";
         }
 
@@ -260,7 +286,6 @@
         function finishLesson() {
             if (score >= 15) {
                 alert(`Amazing! You scored ${score}/20. You unlocked the next lesson!`);
-                // Find next lesson and unlock it
                 const currentIdx = lessons.indexOf(currentLessonId);
                 if (currentIdx < lessons.length - 1) {
                     const nextLesson = lessons[currentIdx + 1];
@@ -328,7 +353,6 @@
             micBtn.classList.remove('listening');
         }
 
-        // Helper to strip punctuation and lower case for fair grading
         function normalizeText(text) {
             return text.toLowerCase().replace(/[.,?!\(\)]/g, "").trim();
         }
@@ -343,12 +367,12 @@
             document.getElementById('mic-btn').style.display = 'none';
 
             if (normalizedSpoken === normalizedCorrect) {
-                feedbackDiv.innerText = "✅ Correct!";
+                feedbackDiv.innerHTML = "Correct!";
                 feedbackDiv.className = "correct";
                 score++;
                 updateScore();
             } else {
-                feedbackDiv.innerText = "❌ Incorrect. The correct answer is:\n" + correctEnglish;
+                feedbackDiv.innerHTML = `Incorrect.<br><span class="correction">${correctEnglish}</span>`;
                 feedbackDiv.className = "incorrect";
             }
 
@@ -359,9 +383,6 @@
                 showFinish();
             }
         }
-
-        // Initialize menu on load
-        buildMenu();
     </script>
 </body>
 </html>
