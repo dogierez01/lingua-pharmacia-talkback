@@ -6,7 +6,6 @@
     <meta name="google" content="notranslate">
     <title>Lingua Pharmacia Talkback</title>
     <style>
-        /* Dark Mode Styling */
         body {
             font-family: Arial, sans-serif;
             text-align: center;
@@ -17,15 +16,12 @@
         }
         .screen { display: none; }
         .screen.active { display: block; }
-        
         img {
             max-width: 90%;
             height: auto;
             border-radius: 10px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 8px rgba(255,255,255,0.1);
         }
-        
         button {
             background-color: #007bff;
             color: white;
@@ -36,10 +32,7 @@
             border-radius: 8px;
             cursor: pointer;
             margin: 10px;
-            transition: background-color 0.3s;
         }
-        button:hover { background-color: #0056b3; }
-        
         .lesson-btn {
             display: block;
             width: 80%;
@@ -47,83 +40,28 @@
             margin: 12px auto;
             background-color: #28a745;
         }
-        .lesson-btn:hover { background-color: #218838; }
         .lesson-btn:disabled {
             background-color: #444444;
             color: #888888;
-            cursor: not-allowed;
         }
-
-        /* Game Screen Styles */
-        #turkish-sentence {
-            font-size: 24px;
-            margin: 30px 0;
-            color: #ffffff;
-        }
-        #mic-btn {
-            background-color: #dc3545;
-            border-radius: 50px;
-            padding: 20px 40px;
-        }
-        #mic-btn.listening {
-            background-color: #ffc107;
-            color: black;
-            animation: pulse 1.5s infinite;
-        }
-        #recognized-text {
-            font-size: 18px;
-            color: #cccccc;
-            min-height: 30px;
-            margin: 20px 0;
-        }
-        
-        /* Neon Feedback Styling */
-        #feedback {
-            font-size: 22px;
-            font-weight: bold;
-            min-height: 60px;
-            margin-top: 10px;
-        }
-        .correct { 
-            color: #00ffff;
-            text-shadow: 0 0 8px #00ffff;
-        }
-        .incorrect { 
-            color: #ff9900;
-            text-shadow: 0 0 8px #ff9900;
-        }
-        .correction { 
-            color: #ccff00;
-            text-shadow: 0 0 8px #ccff00;
-            display: block; 
-            margin-top: 15px; 
-            font-size: 20px;
-        }
-        
-        #score-board {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 20px;
-            color: #ffffff;
-        }
-        
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
+        #turkish-sentence { font-size: 24px; margin: 30px 0; }
+        #mic-btn { background-color: #dc3545; border-radius: 50px; padding: 20px 40px; }
+        #mic-btn.listening { background-color: #ffc107; color: black; }
+        .correct { color: #00ffff; text-shadow: 0 0 8px #00ffff; }
+        .incorrect { color: #ff9900; text-shadow: 0 0 8px #ff9900; }
+        .correction { color: #ccff00; display: block; margin-top: 15px; font-size: 20px; }
     </style>
 </head>
 <body>
 
     <div id="welcome-screen" class="screen active">
-        <img src="logo.png" alt="Lingua Pharmacia Logo">
+        <img src="logo.png" alt="Logo">
         <br>
         <button onclick="showScreen('instructions-screen')">Continue</button>
     </div>
 
     <div id="instructions-screen" class="screen">
-        <img src="instructions.png" alt="App Instructions">
+        <img src="instructions.jpg" alt="Instructions">
         <br>
         <button onclick="showScreen('menu-screen')">Continue</button>
     </div>
@@ -134,277 +72,109 @@
     </div>
 
     <div id="game-screen" class="screen">
-        <button onclick="showScreen('menu-screen')" style="padding: 10px; font-size: 14px; background: #6c757d;">Back to Menu</button>
-        <h2 id="lesson-title">Lesson</h2>
+        <button onclick="showScreen('menu-screen')" style="background: #6c757d;">Back</button>
         <div id="score-board">Score: <span id="current-score">0</span> / 20</div>
-        
-        <div id="turkish-sentence">Loading...</div>
-        
+        <div id="turkish-sentence"></div>
         <button id="mic-btn" onclick="toggleMic()">🎤 Tap to Speak</button>
-        
-        <div id="recognized-text"></div>
+        <div id="recognized-text" style="margin:20px 0; color:#ccc;"></div>
         <div id="feedback"></div>
-        
-        <button id="next-btn" onclick="nextSentence()" style="display:none;">Next Sentence ➡️</button>
-        <button id="finish-btn" onclick="finishLesson()" style="display:none; background-color: #28a745;">Finish Lesson 🎉</button>
+        <button id="next-btn" onclick="nextSentence()" style="display:none;">Next ➡️</button>
+        <button id="finish-btn" onclick="finishLesson()" style="display:none; background:#28a745;">Finish 🎉</button>
     </div>
 
     <script>
-        // --- Navigation Logic ---
-        function showScreen(screenId) {
+        function showScreen(id) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(screenId).classList.add('active');
-            if(screenId === 'menu-screen') buildMenu();
+            document.getElementById(id).classList.add('active');
+            if(id === 'menu-screen') buildMenu();
         }
 
         const lessons = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10A", "10B", "11", "12", "13", "14", "15", "16", "17", "18", "19"];
         let unlockedLessons = JSON.parse(localStorage.getItem('unlockedLessons')) || ['1'];
 
         function buildMenu() {
-            const lessonList = document.getElementById('lesson-list');
-            lessonList.innerHTML = ''; 
-            lessons.forEach(lesson => {
+            const list = document.getElementById('lesson-list');
+            list.innerHTML = '';
+            lessons.forEach(l => {
                 const btn = document.createElement('button');
                 btn.className = 'lesson-btn';
-                btn.innerText = `Lesson ${lesson}`;
-                
-                if (unlockedLessons.includes(lesson)) {
-                    btn.onclick = () => startLesson(lesson);
-                } else {
-                    btn.disabled = true;
-                    btn.innerText += " 🔒";
-                }
-                lessonList.appendChild(btn);
+                btn.innerText = `Lesson ${l}${unlockedLessons.includes(l) ? '' : ' 🔒'}`;
+                btn.disabled = !unlockedLessons.includes(l);
+                btn.onclick = () => startLesson(l);
+                list.appendChild(btn);
             });
         }
 
-        // --- Game Logic ---
-        let currentPairs = [];
-        let currentIndex = 0;
-        let score = 0;
-        let currentLessonId = "";
+        let currentPairs = [], currentIndex = 0, score = 0, currentLessonId = "";
 
-        function parseCSVLine(text) {
-            let ret = [], inQuote = false, value = '';
-            for (let ch of text) {
-                if (inQuote) {
-                    if (ch === '"') inQuote = false;
-                    else value += ch;
-                } else {
-                    if (ch === '"') inQuote = true;
-                    else if (ch === ',') { ret.push(value.trim()); value = ''; }
-                    else value += ch;
-                }
-            }
-            ret.push(value.trim());
-            return ret;
-        }
-
-        function shuffleArray(array) {
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
-            }
-        }
-
-        async function startLesson(lessonId) {
-            currentLessonId = lessonId;
+        async function startLesson(id) {
+            currentLessonId = id;
             showScreen('game-screen');
-            document.getElementById('lesson-title').innerText = `Lesson ${lessonId}`;
-            document.getElementById('turkish-sentence').innerText = "Loading sentences...";
-            
-            currentIndex = 0;
-            score = 0;
-            updateScore();
-            hideButtons();
-            
+            currentIndex = 0; score = 0;
+            document.getElementById('current-score').innerText = "0";
             try {
-                const response = await fetch(`lesson${lessonId.toLowerCase()}.csv`);
-                if (!response.ok) throw new Error("File not found");
-                const csvText = await response.text();
-                
-                const lines = csvText.split('\n').filter(line => line.trim() !== '');
-                currentPairs = [];
-                
-                for (let i = 1; i < lines.length; i++) {
-                    const parsed = parseCSVLine(lines[i]);
-                    if (parsed.length >= 2) {
-                        currentPairs.push({
-                            turkish: parsed[0],
-                            english: parsed[1]
-                        });
-                    }
-                }
-                
-                shuffleArray(currentPairs);
+                const res = await fetch(`lesson${id.toLowerCase()}.csv`);
+                const text = await res.text();
+                const lines = text.split('\n').filter(l => l.trim() !== '').slice(1);
+                currentPairs = lines.map(line => {
+                    const parts = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                    return { tr: parts[0].replace(/"/g, ''), en: parts[1].replace(/"/g, '') };
+                });
+                currentPairs.sort(() => Math.random() - 0.5);
                 loadSentence();
-            } catch (error) {
-                document.getElementById('turkish-sentence').innerText = "Error loading lesson data.";
-                console.error(error);
-            }
+            } catch (e) { alert("Error loading CSV"); }
         }
 
         function loadSentence() {
-            if (currentIndex >= currentPairs.length) return;
-            hideButtons();
-            document.getElementById('turkish-sentence').innerText = currentPairs[currentIndex].turkish;
-            document.getElementById('recognized-text').innerText = "";
-            document.getElementById('feedback').innerHTML = "";
-            document.getElementById('feedback').className = "";
-        }
-
-        function updateScore() {
-            document.getElementById('current-score').innerText = score;
-        }
-
-        function hideButtons() {
             document.getElementById('next-btn').style.display = 'none';
-            document.getElementById('finish-btn').style.display = 'none';
             document.getElementById('mic-btn').style.display = 'inline-block';
+            document.getElementById('turkish-sentence').innerText = currentPairs[currentIndex].tr;
+            document.getElementById('feedback').innerHTML = '';
+            document.getElementById('recognized-text').innerText = '';
         }
 
-        function nextSentence() {
-            currentIndex++;
-            if (currentIndex < currentPairs.length) {
-                loadSentence();
-            } else {
-                showFinish();
-            }
+        function normalize(t) {
+            let s = t.toLowerCase().replace(/[.,?!\(\)]/g, "").trim();
+            const c = {"didn't":"did not","don't":"do not","won't":"will not","can't":"can not"};
+            for(let k in c) s = s.replace(new RegExp("\\b"+k+"\\b","gi"), c[k]);
+            return s.replace(/\s+/g, " ").trim();
         }
 
-        function showFinish() {
-            hideButtons();
+        function checkAnswer(spoken) {
+            const correct = currentPairs[currentIndex].en;
+            const isCorrect = normalize(spoken) === normalize(correct);
             document.getElementById('mic-btn').style.display = 'none';
-            document.getElementById('turkish-sentence').innerText = "Lesson Complete!";
-            document.getElementById('finish-btn').style.display = 'inline-block';
+            const f = document.getElementById('feedback');
+            if(isCorrect) { f.innerHTML = "Correct!"; f.className = "correct"; score++; }
+            else { f.innerHTML = `Incorrect.<br><span class="correction">${correct}</span>`; f.className = "incorrect"; }
+            document.getElementById('current-score').innerText = score;
+            if(currentIndex < currentPairs.length - 1) document.getElementById('next-btn').style.display = 'inline-block';
+            else document.getElementById('finish-btn').style.display = 'inline-block';
         }
+
+        function nextSentence() { currentIndex++; loadSentence(); }
 
         function finishLesson() {
-            if (score >= 15) {
-                alert(`Amazing! You scored ${score}/20. You unlocked the next lesson!`);
-                const currentIdx = lessons.indexOf(currentLessonId);
-                if (currentIdx < lessons.length - 1) {
-                    const nextLesson = lessons[currentIdx + 1];
-                    if (!unlockedLessons.includes(nextLesson)) {
-                        unlockedLessons.push(nextLesson);
-                        localStorage.setItem('unlockedLessons', JSON.stringify(unlockedLessons));
-                    }
-                }
-            } else {
-                alert(`You scored ${score}/20. You need 15 correct to pass. Keep practicing!`);
+            if(score >= 15) {
+                const next = lessons[lessons.indexOf(currentLessonId)+1];
+                if(next && !unlockedLessons.includes(next)) unlockedLessons.push(next);
+                localStorage.setItem('unlockedLessons', JSON.stringify(unlockedLessons));
             }
             showScreen('menu-screen');
         }
 
-        // --- Speech Recognition Logic ---
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        let recognition;
-        let isListening = false;
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.lang = 'en-US';
+        recognition.onstart = () => { document.getElementById('mic-btn').classList.add('listening'); };
+        recognition.onend = () => { document.getElementById('mic-btn').classList.remove('listening'); };
+        recognition.onresult = (e) => { 
+            const t = e.results[0][0].transcript;
+            document.getElementById('recognized-text').innerText = "You said: " + t;
+            checkAnswer(t);
+        };
+        function toggleMic() { recognition.start(); }
 
-        if (SpeechRecognition) {
-            recognition = new SpeechRecognition();
-            recognition.lang = 'en-US';
-            recognition.interimResults = false;
-            recognition.maxAlternatives = 1;
-
-            recognition.onstart = function() {
-                isListening = true;
-                const micBtn = document.getElementById('mic-btn');
-                micBtn.innerText = "Listening...";
-                micBtn.classList.add('listening');
-                document.getElementById('recognized-text').innerText = "";
-            };
-
-            recognition.onresult = function(event) {
-                const transcript = event.results[0][0].transcript;
-                document.getElementById('recognized-text').innerText = "You said: " + transcript;
-                checkAnswer(transcript);
-            };
-
-            recognition.onerror = function(event) {
-                alert("Microphone error: " + event.error);
-                stopMic();
-            };
-
-            recognition.onend = function() {
-                stopMic();
-            };
-        } else {
-            alert("Speech Recognition is not supported in this browser. Please use Google Chrome.");
-        }
-
-        function toggleMic() {
-            if (!recognition) return alert("Browser not supported.");
-            if (isListening) {
-                recognition.stop();
-            } else {
-                recognition.start();
-            }
-        }
-
-        function stopMic() {
-            isListening = false;
-            const micBtn = document.getElementById('mic-btn');
-            micBtn.innerText = "🎤 Tap to Speak";
-            micBtn.classList.remove('listening');
-        }
-
-        // --- Advanced English Normalizer ---
-        function normalizeText(text) {
-            let str = text.toLowerCase().replace(/[.,?!\(\)]/g, "").trim();
-            
-            const contractions = {
-                "didn't": "did not", "didnt": "did not",
-                "don't": "do not", "dont": "do not",
-                "doesn't": "does not", "doesnt": "does not",
-                "won't": "will not", "wont": "will not",
-                "can't": "can not", "cant": "can not", "cannot": "can not",
-                "wasn't": "was not", "wasnt": "was not",
-                "weren't": "were not", "werent": "were not",
-                "isn't": "is not", "isnt": "is not",
-                "aren't": "are not", "arent": "are not",
-                "haven't": "have not", "havent": "have not",
-                "hasn't": "has not", "hasnt": "has not",
-                "hadn't": "had not", "hadnt": "had not",
-                "couldn't": "could not", "couldnt": "could not",
-                "shouldn't": "should not", "shouldnt": "should not",
-                "wouldn't": "would not", "wouldnt": "would not"
-            };
-            
-            for (let key in contractions) {
-                let regex = new RegExp("\\b" + key + "\\b", "gi");
-                str = str.replace(regex, contractions[key]);
-            }
-            
-            return str.replace(/\s+/g, " ").trim();
-        }
-
-        function checkAnswer(spokenText) {
-            const correctEnglish = currentPairs[currentIndex].english;
-            
-            const normalizedSpoken = normalizeText(spokenText);
-            const normalizedCorrect = normalizeText(correctEnglish);
-
-            const feedbackDiv = document.getElementById('feedback');
-            document.getElementById('mic-btn').style.display = 'none';
-
-            if (normalizedSpoken === normalizedCorrect) {
-                feedbackDiv.innerHTML = "Correct!";
-                feedbackDiv.className = "correct";
-                score++;
-                updateScore();
-            } else {
-                feedbackDiv.innerHTML = `Incorrect.<br><span class="correction">${correctEnglish}</span>`;
-                feedbackDiv.className = "incorrect";
-            }
-
-            if (currentIndex < currentPairs.length - 1) {
-                document.getElementById('next-btn').style.display = 'inline-block';
-            } else {
-                document.getElementById('next-btn').style.display = 'none';
-                showFinish();
-            }
-        }
+        buildMenu();
     </script>
 </body>
 </html>
