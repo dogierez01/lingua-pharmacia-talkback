@@ -85,15 +85,15 @@
             margin-top: 10px;
         }
         .correct { 
-            color: #00ffff; /* Neon Blue */
+            color: #00ffff;
             text-shadow: 0 0 8px #00ffff;
         }
         .incorrect { 
-            color: #ff9900; /* Neon Orange */
+            color: #ff9900;
             text-shadow: 0 0 8px #ff9900;
         }
         .correction { 
-            color: #ccff00; /* Neon Yellow */
+            color: #ccff00;
             text-shadow: 0 0 8px #ccff00;
             display: block; 
             margin-top: 15px; 
@@ -123,7 +123,7 @@
     </div>
 
     <div id="instructions-screen" class="screen">
-        <img src="https://github.com/dogierez01/lingua-pharmacia-talkback/blob/main/%20instructions.png?raw=true" alt="App Instructions">
+        <img src="instructions.png" alt="App Instructions">
         <br>
         <button onclick="showScreen('menu-screen')">Continue</button>
     </div>
@@ -184,7 +184,6 @@
         let score = 0;
         let currentLessonId = "";
 
-        // Custom CSV parser
         function parseCSVLine(text) {
             let ret = [], inQuote = false, value = '';
             for (let ch of text) {
@@ -201,7 +200,6 @@
             return ret;
         }
 
-        // Randomizer function
         function shuffleArray(array) {
             for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -351,7 +349,7 @@
             micBtn.classList.remove('listening');
         }
 
-        // --- Advanced English Normalizer (Fixes the "didn't" vs "did not" issue) ---
+        // --- Advanced English Normalizer ---
         function normalizeText(text) {
             let str = text.toLowerCase().replace(/[.,?!\(\)]/g, "").trim();
             
