@@ -6,20 +6,96 @@
     <meta name="google" content="notranslate">
     <title>Lingua Pharmacia Talkback</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; background-color: #000; color: #fff; margin: 0; padding: 20px; }
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            background-color: #000; 
+            color: #fff; 
+            margin: 0; 
+            padding: 20px; 
+        }
         .screen { display: none; }
         .screen.active { display: block; }
-        img { max-width: 90%; height: auto; border-radius: 10px; margin-bottom: 20px; }
-        button { background-color: #007bff; color: white; border: none; padding: 15px 30px; font-size: 18px; border-radius: 8px; cursor: pointer; margin: 10px; }
-        .lesson-btn { display: block; width: 80%; max-width: 300px; margin: 12px auto; background-color: #28a745; }
-        .lesson-btn:disabled { background-color: #444; color: #888; cursor: not-allowed; }
-        #turkish-sentence { font-size: 24px; margin: 30px 0; }
-        #mic-btn { background-color: #dc3545; border-radius: 50px; padding: 20px 40px; }
-        #mic-btn.listening { background-color: #ffc107; color: #000; }
-        /* Neon Colors */
-        .correct { color: #00ffff; text-shadow: 0 0 8px #00ffff; }
-        .incorrect { color: #ff9900; text-shadow: 0 0 8px #ff9900; }
-        .correction { color: #ccff00; text-shadow: 0 0 8px #ccff00; display: block; margin-top: 15px; font-size: 20px; }
+        img { 
+            max-width: 90%; 
+            height: auto; 
+            border-radius: 10px; 
+            margin-bottom: 20px; 
+        }
+        button { 
+            background-color: #007bff; 
+            color: white; 
+            border: none; 
+            padding: 15px 30px; 
+            font-size: 20px; 
+            font-weight: bold; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            margin: 10px; 
+        }
+        .lesson-btn { 
+            display: block; 
+            width: 80%; 
+            max-width: 300px; 
+            margin: 12px auto; 
+            background-color: #28a745; 
+        }
+        .lesson-btn:disabled { 
+            background-color: #444; 
+            color: #888; 
+            cursor: not-allowed; 
+        }
+
+        /* Game Screen Layout */
+        #turkish-sentence { 
+            font-size: 30px; 
+            margin: 30px 0; 
+            font-weight: bold;
+        }
+        #mic-btn { 
+            background-color: #dc3545; 
+            border-radius: 50px; 
+            padding: 25px 50px; 
+            font-size: 22px;
+        }
+        #mic-btn.listening { 
+            background-color: #ffc107; 
+            color: #000; 
+        }
+
+        /* ENLARGED RECOGNIZED TEXT */
+        #recognized-text { 
+            font-size: 32px; 
+            font-weight: bold; 
+            margin: 30px 0; 
+            color: #ffffff; 
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 10px;
+            min-height: 40px;
+        }
+
+        /* NEON FEEDBACK */
+        #feedback { 
+            font-size: 28px; 
+            font-weight: bold; 
+            min-height: 80px;
+        }
+        .correct { 
+            color: #00ffff; 
+            text-shadow: 0 0 12px #00ffff; 
+        }
+        .incorrect { 
+            color: #ff9900; 
+            text-shadow: 0 0 12px #ff9900; 
+        }
+        .correction { 
+            color: #ccff00; 
+            text-shadow: 0 0 12px #ccff00; 
+            display: block; 
+            margin-top: 20px; 
+            font-size: 26px; 
+        }
     </style>
 </head>
 <body>
@@ -30,7 +106,7 @@
     </div>
 
     <div id="instructions-screen" class="screen">
-        <img src="instructions.jpg" alt="Instructions">
+        <img src="instructions.jpg" alt="Instructions Image">
         <br><button onclick="showScreen('menu-screen')">Continue</button>
     </div>
 
@@ -40,14 +116,18 @@
     </div>
 
     <div id="game-screen" class="screen">
-        <button onclick="showScreen('menu-screen')" style="background:#6c757d;">Back</button>
-        <div style="margin: 10px 0;">Score: <span id="current-score">0</span> / 20</div>
+        <button onclick="showScreen('menu-screen')" style="background:#6c757d; font-size: 16px;">Back to Menu</button>
+        <div style="margin: 15px 0; font-size: 22px;">Score: <span id="current-score">0</span> / 20</div>
+        
         <div id="turkish-sentence"></div>
+        
         <button id="mic-btn" onclick="toggleMic()">🎤 Tap to Speak</button>
-        <div id="recognized-text" style="margin:20px 0; color:#ccc;"></div>
+        
+        <div id="recognized-text"></div>
         <div id="feedback"></div>
-        <button id="next-btn" onclick="nextSentence()" style="display:none;">Next ➡️</button>
-        <button id="finish-btn" onclick="finishLesson()" style="display:none; background:#28a745;">Finish 🎉</button>
+        
+        <button id="next-btn" onclick="nextSentence()" style="display:none; background-color: #007bff;">Next Sentence ➡️</button>
+        <button id="finish-btn" onclick="finishLesson()" style="display:none; background-color: #28a745;">Finish Lesson 🎉</button>
     </div>
 
     <script>
@@ -86,11 +166,11 @@
                 const lines = text.split('\n').filter(l => l.trim() !== '').slice(1);
                 currentPairs = lines.map(line => {
                     const parts = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                    return { tr: parts[0].replace(/"/g, ''), en: parts[1].replace(/"/g, '') };
+                    return { tr: parts[0].replace(/"/g, '').trim(), en: parts[1].replace(/"/g, '').trim() };
                 });
                 currentPairs.sort(() => Math.random() - 0.5);
                 loadSentence();
-            } catch (e) { alert("Error loading lesson."); }
+            } catch (e) { alert("Error loading CSV file."); }
         }
 
         function loadSentence() {
@@ -101,10 +181,15 @@
             document.getElementById('recognized-text').innerText = '';
         }
 
-        // CONTRACTION NORMALIZER
         function normalize(t) {
             let s = t.toLowerCase().replace(/[.,?!\(\)]/g, "").trim();
-            const c = {"didn't":"did not","don't":"do not","won't":"will not","can't":"can not","shouldn't":"should not","wouldn't":"would not","couldn't":"could not"};
+            const c = {
+                "didn't":"did not", "didnt":"did not",
+                "don't":"do not", "dont":"do not",
+                "won't":"will not", "wont":"will not",
+                "can't":"can not", "cant":"can not", "cannot":"can not",
+                "shouldn't":"should not", "wouldn't":"would not", "couldn't":"could not"
+            };
             for(let k in c) s = s.replace(new RegExp("\\b"+k+"\\b","gi"), c[k]);
             return s.replace(/\s+/g, " ").trim();
         }
@@ -114,8 +199,16 @@
             const isCorrect = normalize(spoken) === normalize(correct);
             document.getElementById('mic-btn').style.display = 'none';
             const f = document.getElementById('feedback');
-            if(isCorrect) { f.innerHTML = "Correct!"; f.className = "correct"; score++; }
-            else { f.innerHTML = `Incorrect.<br><span class="correction">${correct}</span>`; f.className = "incorrect"; }
+            
+            if(isCorrect) { 
+                f.innerHTML = "Correct!"; 
+                f.className = "correct"; 
+                score++; 
+            } else { 
+                f.innerHTML = `Incorrect.<br><span class="correction">${correct}</span>`; 
+                f.className = "incorrect"; 
+            }
+            
             document.getElementById('current-score').innerText = score;
             if(currentIndex < currentPairs.length - 1) document.getElementById('next-btn').style.display = 'inline-block';
             else document.getElementById('finish-btn').style.display = 'inline-block';
