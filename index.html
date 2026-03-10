@@ -182,7 +182,6 @@
             });
         }
 
-        // --- TRUE RANDOMIZER (Fisher-Yates Shuffle) ---
         function shuffleArray(array) {
             for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -209,7 +208,6 @@
                     return { tr: parts[0].replace(/"/g, '').trim(), en: parts[1].replace(/"/g, '').trim() };
                 });
                 
-                // Applying the true randomizer here
                 shuffleArray(currentPairs);
                 
                 document.getElementById('total-questions').innerText = currentPairs.length;
@@ -242,15 +240,11 @@
         function checkAnswer(spoken) {
             const rawCorrect = currentPairs[currentIndex].en;
             
-            // OPTION 1: Keep the word inside the parenthesis
             const correctWithParenthesesText = rawCorrect.replace(/[\(\)]/g, "");
-            
-            // OPTION 2: Completely remove the parenthesis AND the word inside it
             const correctWithoutParenthesesText = rawCorrect.replace(/\([^)]*\)/g, " ");
 
             const normalizedSpoken = normalize(spoken);
             
-            // Check if what the student said matches either option
             const isCorrect = (normalizedSpoken === normalize(correctWithParenthesesText)) || 
                               (normalizedSpoken === normalize(correctWithoutParenthesesText));
 
@@ -262,7 +256,6 @@
                 f.className = "correct"; 
                 score++; 
             } else { 
-                // Display the clean version without parentheses to the student if they get it wrong
                 f.innerHTML = `Incorrect.<br><span class="correction">${correctWithParenthesesText}</span>`; 
                 f.className = "incorrect"; 
             }
@@ -288,7 +281,8 @@
 
         function finishLesson() {
             saveProgress();
-            if(score >= 15) {
+            // THRESHOLD LOWERED TO 10
+            if(score >= 10) {
                 const next = lessons[lessons.indexOf(currentLessonId)+1];
                 if(next && !unlockedLessons.includes(next)) unlockedLessons.push(next);
                 localStorage.setItem('unlockedLessons', JSON.stringify(unlockedLessons));
