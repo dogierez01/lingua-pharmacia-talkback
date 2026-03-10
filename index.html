@@ -17,7 +17,6 @@
         .screen { display: none; }
         .screen.active { display: block; }
         
-        /* ADJUSTED IMAGE SIZING - Bumped up by 10% */
         img { 
             max-width: 80%; 
             max-height: 70vh; 
@@ -38,10 +37,12 @@
             cursor: pointer; 
             margin: 10px; 
         }
+        
+        /* WIDENED BUTTONS TO FIT THE SCORE TEXT */
         .lesson-btn { 
             display: block; 
-            width: 80%; 
-            max-width: 300px; 
+            width: 85%; 
+            max-width: 380px; 
             margin: 12px auto; 
             background-color: #28a745; 
         }
@@ -68,7 +69,6 @@
             color: #000; 
         }
 
-        /* ENLARGED RECOGNIZED TEXT */
         #recognized-text { 
             font-size: 32px; 
             font-weight: bold; 
@@ -80,7 +80,6 @@
             min-height: 40px;
         }
 
-        /* NEON FEEDBACK */
         #feedback { 
             font-size: 28px; 
             font-weight: bold; 
@@ -121,7 +120,7 @@
     </div>
 
     <div id="game-screen" class="screen">
-        <button onclick="showScreen('menu-screen')" style="background:#6c757d; font-size: 16px;">Back to Menu</button>
+        <button onclick="backToMenu()" style="background:#6c757d; font-size: 16px;">Back to Menu</button>
         <div style="margin: 15px 0; font-size: 22px;">Score: <span id="current-score">0</span> / 20</div>
         
         <div id="turkish-sentence"></div>
@@ -143,7 +142,10 @@
         }
 
         const lessons = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10A", "10B", "11", "12", "13", "14", "15", "16", "17", "18", "19"];
+        
+        // Load saved progress from the phone's memory
         let unlockedLessons = JSON.parse(localStorage.getItem('unlockedLessons')) || ['1'];
+        let lessonScores = JSON.parse(localStorage.getItem('lessonScores')) || {};
 
         function buildMenu() {
             const list = document.getElementById('lesson-list');
@@ -151,9 +153,21 @@
             lessons.forEach(l => {
                 const btn = document.createElement('button');
                 btn.className = 'lesson-btn';
-                btn.innerText = `Lesson ${l}${unlockedLessons.includes(l) ? '' : ' 🔒'}`;
-                btn.disabled = !unlockedLessons.includes(l);
-                btn.onclick = () => startLesson(l);
+                
+                let btnText = `Lesson ${l}`;
+                
+                if (unlockedLessons.includes(l)) {
+                    // Add the score text if they have played this lesson before
+                    if (lessonScores[l] !== undefined) {
+                        btnText += ` (Best: ${lessonScores[l]}/20)`;
+                    }
+                    btn.onclick = () => startLesson(l);
+                } else {
+                    btnText += ' 🔒';
+                    btn.disabled = true;
+                }
+                
+                btn.innerText = btnText;
                 list.appendChild(btn);
             });
         }
@@ -221,7 +235,23 @@
 
         function nextSentence() { currentIndex++; loadSentence(); }
 
+        // Saves the score to the phone's memory
+        function saveProgress() {
+            if (!lessonScores[currentLessonId] || score > lessonScores[currentLessonId]) {
+                lessonScores[currentLessonId] = score;
+                localStorage.setItem('lessonScores', JSON.stringify(lessonScores));
+            }
+        }
+
+        // New function so that backing out halfway still saves progress
+        function backToMenu() {
+            saveProgress();
+            showScreen('menu-screen');
+        }
+
         function finishLesson() {
+            saveProgress();
+            
             if(score >= 15) {
                 const next = lessons[lessons.indexOf(currentLessonId)+1];
                 if(next && !unlockedLessons.includes(next)) unlockedLessons.push(next);
