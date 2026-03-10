@@ -16,12 +16,17 @@
         }
         .screen { display: none; }
         .screen.active { display: block; }
+        
+        /* SHRUNK IMAGE SIZING */
         img { 
-            max-width: 90%; 
+            max-width: 70%; 
+            max-height: 60vh; /* Prevents the image from pushing buttons off the screen */
+            object-fit: contain;
             height: auto; 
             border-radius: 10px; 
             margin-bottom: 20px; 
         }
+        
         button { 
             background-color: #007bff; 
             color: white; 
