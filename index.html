@@ -125,6 +125,8 @@
     <div id="menu-screen" class="screen">
         <h2>Select a Lesson</h2>
         <div id="lesson-list"></div>
+        <br>
+        <button onclick="resetProgress()" style="background-color: #dc3545; font-size: 16px; padding: 10px 20px; margin-top: 30px;">⚠️ Reset All Progress</button>
     </div>
 
     <div id="game-screen" class="screen">
@@ -182,6 +184,17 @@
             });
         }
 
+        function resetProgress() {
+            if (confirm("Are you sure you want to reset all progress? All scores and unlocked lessons will be lost.")) {
+                localStorage.removeItem('unlockedLessons');
+                localStorage.removeItem('lessonScores');
+                unlockedLessons = ['1'];
+                lessonScores = {};
+                buildMenu();
+                alert("Progress has been reset.");
+            }
+        }
+
         function shuffleArray(array) {
             for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -237,6 +250,25 @@
             return s.replace(/\s+/g, " ").trim();
         }
 
+        // --- FUZZY MATCHING MATH (Levenshtein Distance) ---
+        function getDistance(a, b) {
+            if(a.length === 0) return b.length;
+            if(b.length === 0) return a.length;
+            var matrix = [];
+            for(var i = 0; i <= b.length; i++) { matrix[i] = [i]; }
+            for(var j = 0; j <= a.length; j++) { matrix[0][j] = j; }
+            for(var i = 1; i <= b.length; i++) {
+                for(var j = 1; j <= a.length; j++) {
+                    if(b.charAt(i-1) == a.charAt(j-1)) {
+                        matrix[i][j] = matrix[i-1][j-1];
+                    } else {
+                        matrix[i][j] = Math.min(matrix[i-1][j-1] + 1, Math.min(matrix[i][j-1] + 1, matrix[i-1][j] + 1));
+                    }
+                }
+            }
+            return matrix[b.length][a.length];
+        }
+
         function checkAnswer(spoken) {
             const rawCorrect = currentPairs[currentIndex].en;
             
@@ -244,9 +276,19 @@
             const correctWithoutParenthesesText = rawCorrect.replace(/\([^)]*\)/g, " ");
 
             const normalizedSpoken = normalize(spoken);
+            const normCorrect1 = normalize(correctWithParenthesesText);
+            const normCorrect2 = normalize(correctWithoutParenthesesText);
             
-            const isCorrect = (normalizedSpoken === normalize(correctWithParenthesesText)) || 
-                              (normalizedSpoken === normalize(correctWithoutParenthesesText));
+            // Calculate how many letters are "wrong"
+            const distance1 = getDistance(normalizedSpoken, normCorrect1);
+            const distance2 = getDistance(normalizedSpoken, normCorrect2);
+            
+            // Allow 1 typo per 8 letters of the correct sentence
+            const allowedTypos1 = Math.max(1, Math.floor(normCorrect1.length / 8));
+            const allowedTypos2 = Math.max(1, Math.floor(normCorrect2.length / 8));
+
+            // It passes if the typos are less than or equal to the allowed margin of error
+            const isCorrect = (distance1 <= allowedTypos1) || (distance2 <= allowedTypos2);
 
             document.getElementById('mic-btn').style.display = 'none';
             const f = document.getElementById('feedback');
@@ -281,7 +323,6 @@
 
         function finishLesson() {
             saveProgress();
-            // THRESHOLD LOWERED TO 10
             if(score >= 10) {
                 const next = lessons[lessons.indexOf(currentLessonId)+1];
                 if(next && !unlockedLessons.includes(next)) unlockedLessons.push(next);
