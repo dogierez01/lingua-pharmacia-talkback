@@ -161,7 +161,6 @@
         function normalize(t) {
             let s = t.toLowerCase().replace(/[.,?!'’]/g, "").trim();
             
-            // 1. Contraction Fixes
             const contractions = {
                 "didnt":"did not", "doesnt":"does not", "dont":"do not",
                 "wont":"will not", "cant":"can not", "cannot":"can not",
@@ -171,7 +170,6 @@
             };
             for(let k in contractions) s = s.replace(new RegExp("\\b"+k+"\\b","gi"), contractions[k]);
 
-            // 2. SPECIFIC MICROPHONE TYPO FIXES (Add your problem words here)
             const micTypos = {
                 "modern": "modem",
                 "by the": "buy the"
@@ -187,7 +185,6 @@
             const correctWithParenthesesText = rawCorrect.replace(/[\(\)]/g, "");
             const correctWithoutParenthesesText = rawCorrect.replace(/\([^)]*\)/g, " ");
 
-            // We are back to strict, exact matching
             const normalizedSpoken = normalize(spoken);
             const isCorrect = (normalizedSpoken === normalize(correctWithParenthesesText)) || 
                               (normalizedSpoken === normalize(correctWithoutParenthesesText));
@@ -233,16 +230,45 @@
             showScreen('menu-screen');
         }
 
-        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-        recognition.lang = 'en-US';
-        recognition.onstart = () => document.getElementById('mic-btn').classList.add('listening');
-        recognition.onend = () => document.getElementById('mic-btn').classList.remove('listening');
-        recognition.onresult = (e) => { 
-            const t = e.results[0][0].transcript;
-            document.getElementById('recognized-text').innerText = "You said: " + t;
-            checkAnswer(t);
-        };
-        function toggleMic() { recognition.start(); }
+        // --- iOS / iPHONE SAFETY NET ---
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.lang = 'en-US';
+            
+            recognition.onstart = () => document.getElementById('mic-btn').classList.add('listening');
+            recognition.onend = () => document.getElementById('mic-btn').classList.remove('listening');
+            
+            recognition.onresult = (e) => { 
+                const t = e.results[0][0].transcript;
+                document.getElementById('recognized-text').innerText = "You said: " + t;
+                checkAnswer(t);
+            };
+
+            // Catching specific microphone errors
+            recognition.onerror = (event) => {
+                document.getElementById('mic-btn').classList.remove('listening');
+                if (event.error === 'not-allowed') {
+                    alert("Microphone Blocked! \n\niPhone Users: Go to Settings > Safari > Microphone and select 'Allow'.\n\nAlso, make sure you opened this link in Safari, NOT inside WhatsApp or Instagram.");
+                } else {
+                    alert("Microphone error: " + event.error);
+                }
+            };
+        }
+
+        function toggleMic() { 
+            if (!recognition) {
+                alert("Speech Recognition is not supported here.\n\niPhone Users: Please open this link in the REAL Safari or Chrome app. Do not use the mini-browser inside WhatsApp or Instagram.");
+                return;
+            }
+            try {
+                recognition.start(); 
+            } catch(e) {
+                console.log("Mic already listening or interrupted.");
+            }
+        }
 
         buildMenu();
     </script>
