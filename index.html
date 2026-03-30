@@ -18,7 +18,7 @@
         .lesson-btn:disabled { background-color: #444; color: #888; cursor: not-allowed; }
 
         #turkish-sentence { font-size: 30px; margin: 30px 0; font-weight: bold; }
-        #mic-btn { background-color: #dc3545; border-radius: 50px; padding: 25px 50px; font-size: 22px; }
+        #mic-btn { background-color: #dc3545; border-radius: 50px; padding: 25px 50px; font-size: 22px; transition: background-color 0.3s; }
         #mic-btn.listening { background-color: #ffc107; color: #000; }
 
         #recognized-text { font-size: 32px; font-weight: bold; margin: 30px 0; color: #ffffff; background: rgba(255, 255, 255, 0.1); padding: 10px; border-radius: 10px; min-height: 40px; }
@@ -30,7 +30,6 @@
         
         .tracker-box { background: #222; padding: 15px; border-radius: 10px; margin-bottom: 20px; display: inline-block; font-size: 22px; border: 1px solid #444; }
         
-        /* Specific styling for the iPhone warning */
         .ios-warning { color: #ffc107; font-size: 18px; font-weight: bold; margin: 10px 20px 30px 20px; line-height: 1.4; background: rgba(255, 193, 7, 0.1); padding: 15px; border-radius: 8px; border: 1px solid #ffc107; }
     </style>
 </head>
@@ -84,7 +83,6 @@
 
         const lessons = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10A", "10B", "11", "12", "13", "14", "15", "16", "17", "18", "19"];
         
-        // Locks removed. We now only track the highest score.
         let lessonScores = JSON.parse(localStorage.getItem('lessonScores')) || {};
 
         function buildMenu() {
@@ -95,12 +93,10 @@
                 btn.className = 'lesson-btn';
                 
                 let btnText = `Lesson ${l}`;
-                
                 if (lessonScores[l] !== undefined) {
                     btnText += ` (Best: ${lessonScores[l]})`;
                 }
                 
-                // All buttons are now clickable from the start
                 btn.onclick = () => startLesson(l);
                 btn.innerText = btnText;
                 list.appendChild(btn);
@@ -143,7 +139,6 @@
                 });
                 
                 shuffleArray(currentPairs);
-                
                 document.getElementById('total-questions').innerText = currentPairs.length;
                 loadSentence();
             } catch (e) { alert("Error loading CSV file."); }
@@ -156,6 +151,9 @@
             document.getElementById('current-question').innerText = currentIndex + 1;
             document.getElementById('feedback').innerHTML = '';
             document.getElementById('recognized-text').innerText = '';
+            
+            // Reset button text just in case
+            document.getElementById('mic-btn').innerText = "🎤 Tap to Speak";
         }
 
         function normalize(t) {
@@ -225,43 +223,99 @@
             showScreen('menu-screen');
         }
 
-        // --- iOS / iPHONE SAFETY NET ---
+        // --- THE PATIENCE TIMER ENGINE ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition;
+        
+        let silenceTimer = null;
+        let currentTranscript = "";
+        let isListening = false;
 
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
             recognition.lang = 'en-US';
             
-            recognition.onstart = () => document.getElementById('mic-btn').classList.add('listening');
-            recognition.onend = () => document.getElementById('mic-btn').classList.remove('listening');
+            // Force continuous listening and real-time word gathering
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            
+            recognition.onstart = () => {
+                isListening = true;
+                currentTranscript = "";
+                const btn = document.getElementById('mic-btn');
+                btn.classList.add('listening');
+                btn.innerText = "🛑 Stop Listening"; 
+                document.getElementById('recognized-text').innerText = "Listening...";
+                
+                // Start a timer just in case they tap but never say anything
+                silenceTimer = setTimeout(() => {
+                    if (isListening) toggleMic();
+                }, 5000); 
+            };
+            
+            recognition.onend = () => {
+                isListening = false;
+                const btn = document.getElementById('mic-btn');
+                btn.classList.remove('listening');
+                btn.innerText = "🎤 Tap to Speak";
+                clearTimeout(silenceTimer);
+            };
             
             recognition.onresult = (e) => { 
-                const t = e.results[0][0].transcript;
-                document.getElementById('recognized-text').innerText = "You said: " + t;
-                checkAnswer(t);
+                // Clear the countdown every time they speak a new word
+                clearTimeout(silenceTimer);
+                currentTranscript = "";
+                
+                for (let i = 0; i < e.results.length; i++) {
+                    currentTranscript += e.results[i][0].transcript;
+                }
+                
+                document.getElementById('recognized-text').innerText = "You said: " + currentTranscript;
+                
+                // Set the 3-SECOND SILENCE TIMER
+                silenceTimer = setTimeout(() => {
+                    if (isListening) {
+                        recognition.stop();
+                        checkAnswer(currentTranscript);
+                    }
+                }, 3000); 
             };
 
-            // Catching specific microphone errors
             recognition.onerror = (event) => {
+                isListening = false;
                 document.getElementById('mic-btn').classList.remove('listening');
+                document.getElementById('mic-btn').innerText = "🎤 Tap to Speak";
+                clearTimeout(silenceTimer);
+                
                 if (event.error === 'not-allowed') {
                     alert("Microphone Blocked! \n\niPhone Users: Go to Settings > Safari > Microphone and select 'Allow'.\n\nAlso, make sure you opened this link directly in Safari, NOT inside WhatsApp or Instagram.");
-                } else {
-                    alert("Microphone error: " + event.error);
+                } else if (event.error !== 'no-speech') {
+                    console.log("Microphone warning: " + event.error);
                 }
             };
         }
 
         function toggleMic() { 
             if (!recognition) {
-                alert("Speech Recognition is not supported here.\n\niPhone Users: Please open this link in the REAL Safari or Chrome app. Do not use the mini-browser inside WhatsApp or Instagram.");
+                alert("Speech Recognition is not supported here.\n\niPhone Users: Please open this link in the REAL Safari or Chrome app.");
                 return;
             }
-            try {
-                recognition.start(); 
-            } catch(e) {
-                console.log("Mic already listening or interrupted.");
+            
+            if (isListening) {
+                // MANUAL OVERRIDE: If they tap the button while it's listening, stop and grade immediately
+                clearTimeout(silenceTimer);
+                recognition.stop();
+                if (currentTranscript.trim() !== "") {
+                    checkAnswer(currentTranscript);
+                } else {
+                    document.getElementById('recognized-text').innerText = "Nothing heard. Try again.";
+                }
+            } else {
+                try {
+                    recognition.start(); 
+                } catch(e) {
+                    console.log("Mic already listening or interrupted.");
+                }
             }
         }
 
