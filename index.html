@@ -31,6 +31,8 @@
         .tracker-box { background: #222; padding: 15px; border-radius: 10px; margin-bottom: 20px; display: inline-block; font-size: 22px; border: 1px solid #444; }
         
         .ios-warning { color: #ffc107; font-size: 18px; font-weight: bold; margin: 10px 20px 30px 20px; line-height: 1.4; background: rgba(255, 193, 7, 0.1); padding: 15px; border-radius: 8px; border: 1px solid #ffc107; }
+        
+        .version-tag { font-size: 12px; color: #444; margin-top: 40px; }
     </style>
 </head>
 <body>
@@ -41,11 +43,13 @@
             📱 iPhone Users: Please open this app directly in Safari or Chrome. Do not use the browser inside WhatsApp or Instagram, or your microphone will not work!
         </div>
         <br><button onclick="showScreen('instructions-screen')">Continue</button>
+        <div class="version-tag">Engine: Lax Grading v1</div>
     </div>
 
     <div id="instructions-screen" class="screen">
         <img src="%20instructions.jpg" alt="Instructions Image">
         <br><button onclick="showScreen('menu-screen')">Continue</button>
+        <div class="version-tag">Engine: Lax Grading v1</div>
     </div>
 
     <div id="menu-screen" class="screen">
@@ -53,6 +57,7 @@
         <div id="lesson-list"></div>
         <br>
         <button onclick="resetProgress()" style="background-color: #dc3545; font-size: 16px; padding: 10px 20px; margin-top: 30px;">⚠️ Reset All Progress</button>
+        <div class="version-tag">Engine: Lax Grading v1</div>
     </div>
 
     <div id="game-screen" class="screen">
@@ -72,6 +77,8 @@
         
         <button id="next-btn" onclick="nextSentence()" style="display:none; background-color: #007bff;">Next Sentence ➡️</button>
         <button id="finish-btn" onclick="finishLesson()" style="display:none; background-color: #28a745;">Finish Lesson 🎉</button>
+        
+        <div class="version-tag">Engine: Lax Grading v1</div>
     </div>
 
     <script>
@@ -155,12 +162,9 @@
             document.getElementById('mic-btn').innerText = "🎤 Tap to Speak";
         }
 
-        // --- UPDATED, LAX NORMALIZER (ARTICLE AGNOSTIC) ---
         function normalize(t) {
-            // Step 1: Remove ALL punctuation (except apostrophes, handled in contractions)
-            let s = t.toLowerCase().replace(/[.,?!]/g, "").trim();
+            let s = t.toLowerCase().replace(/[.,?!'’]/g, "").trim();
             
-            // Step 2: Complex Contraction handling to match CSV data
             const contractions = {
                 "didn't":"did not", "didnt":"did not", "don't":"do not", "dont":"do not", "doesn't":"does not", "doesnt":"does not",
                 "won't":"will not", "wont":"will not", "can't":"can not", "cant":"can not", "cannot":"can not",
@@ -170,28 +174,24 @@
             };
             for(let k in contractions) s = s.replace(new RegExp("\\b"+k+"\\b","gi"), contractions[k]);
 
-            // Step 3: Specific Microphone Typo Fixes
             const micTypos = {
                 "modern": "modem",
                 "by the": "buy the"
             };
             for(let key in micTypos) s = s.replace(new RegExp("\\b"+key+"\\b","gi"), micTypos[key]);
 
-            // STEP 4 (THE FIX): Remove ALL indefinite and definite articles (a/an/the)
+            // REMOVE ARTICLES
             s = s.replace(/\b(a|an|the)\b/gi, "").trim();
 
-            // Step 5: Sanitize multiple spaces
             return s.replace(/\s+/g, " ").trim();
         }
 
         function checkAnswer(spoken) {
             const rawCorrect = currentPairs[currentIndex].en;
             
-            // Handle optional words in parentheses (e.g., '(a) car' can be 'a car' or 'car')
             const correctWithParenthesesText = rawCorrect.replace(/[\(\)]/g, "");
             const correctWithoutParenthesesText = rawCorrect.replace(/\([^)]*\)/g, " ");
 
-            // Apply the new, lax normalizer to all variants
             const normalizedSpoken = normalize(spoken);
             const isCorrect = (normalizedSpoken === normalize(correctWithParenthesesText)) || 
                               (normalizedSpoken === normalize(correctWithoutParenthesesText));
@@ -232,7 +232,6 @@
             showScreen('menu-screen');
         }
 
-        // --- Speech Recognition Engine (With 3-Second Patience Timer) ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition;
         let silenceTimer = null;
