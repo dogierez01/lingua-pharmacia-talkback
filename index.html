@@ -29,12 +29,18 @@
         .correction { color: #ccff00; text-shadow: 0 0 12px #ccff00; display: block; margin-top: 20px; font-size: 26px; }
         
         .tracker-box { background: #222; padding: 15px; border-radius: 10px; margin-bottom: 20px; display: inline-block; font-size: 22px; border: 1px solid #444; }
+        
+        /* Specific styling for the iPhone warning */
+        .ios-warning { color: #ffc107; font-size: 18px; font-weight: bold; margin: 10px 20px 30px 20px; line-height: 1.4; background: rgba(255, 193, 7, 0.1); padding: 15px; border-radius: 8px; border: 1px solid #ffc107; }
     </style>
 </head>
 <body>
 
     <div id="welcome-screen" class="screen active">
         <img src="logo.png" alt="Logo">
+        <div class="ios-warning">
+            📱 iPhone Users: Please open this app directly in Safari or Chrome. Do not use the browser inside WhatsApp or Instagram, or your microphone will not work!
+        </div>
         <br><button onclick="showScreen('instructions-screen')">Continue</button>
     </div>
 
@@ -78,7 +84,7 @@
 
         const lessons = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10A", "10B", "11", "12", "13", "14", "15", "16", "17", "18", "19"];
         
-        let unlockedLessons = JSON.parse(localStorage.getItem('unlockedLessons')) || ['1'];
+        // Locks removed. We now only track the highest score.
         let lessonScores = JSON.parse(localStorage.getItem('lessonScores')) || {};
 
         function buildMenu() {
@@ -90,26 +96,20 @@
                 
                 let btnText = `Lesson ${l}`;
                 
-                if (unlockedLessons.includes(l)) {
-                    if (lessonScores[l] !== undefined) {
-                        btnText += ` (Best: ${lessonScores[l]})`;
-                    }
-                    btn.onclick = () => startLesson(l);
-                } else {
-                    btnText += ' 🔒';
-                    btn.disabled = true;
+                if (lessonScores[l] !== undefined) {
+                    btnText += ` (Best: ${lessonScores[l]})`;
                 }
                 
+                // All buttons are now clickable from the start
+                btn.onclick = () => startLesson(l);
                 btn.innerText = btnText;
                 list.appendChild(btn);
             });
         }
 
         function resetProgress() {
-            if (confirm("Are you sure you want to reset all progress? All scores and unlocked lessons will be lost.")) {
-                localStorage.removeItem('unlockedLessons');
+            if (confirm("Are you sure you want to reset all progress? All scores will be lost.")) {
                 localStorage.removeItem('lessonScores');
-                unlockedLessons = ['1'];
                 lessonScores = {};
                 buildMenu();
                 alert("Progress has been reset.");
@@ -222,11 +222,6 @@
 
         function finishLesson() {
             saveProgress();
-            if(score >= 10) {
-                const next = lessons[lessons.indexOf(currentLessonId)+1];
-                if(next && !unlockedLessons.includes(next)) unlockedLessons.push(next);
-                localStorage.setItem('unlockedLessons', JSON.stringify(unlockedLessons));
-            }
             showScreen('menu-screen');
         }
 
@@ -251,7 +246,7 @@
             recognition.onerror = (event) => {
                 document.getElementById('mic-btn').classList.remove('listening');
                 if (event.error === 'not-allowed') {
-                    alert("Microphone Blocked! \n\niPhone Users: Go to Settings > Safari > Microphone and select 'Allow'.\n\nAlso, make sure you opened this link in Safari, NOT inside WhatsApp or Instagram.");
+                    alert("Microphone Blocked! \n\niPhone Users: Go to Settings > Safari > Microphone and select 'Allow'.\n\nAlso, make sure you opened this link directly in Safari, NOT inside WhatsApp or Instagram.");
                 } else {
                     alert("Microphone error: " + event.error);
                 }
