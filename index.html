@@ -152,37 +152,46 @@
             document.getElementById('feedback').innerHTML = '';
             document.getElementById('recognized-text').innerText = '';
             
-            // Reset button text just in case
             document.getElementById('mic-btn').innerText = "🎤 Tap to Speak";
         }
 
+        // --- UPDATED, LAX NORMALIZER (ARTICLE AGNOSTIC) ---
         function normalize(t) {
-            let s = t.toLowerCase().replace(/[.,?!'’]/g, "").trim();
+            // Step 1: Remove ALL punctuation (except apostrophes, handled in contractions)
+            let s = t.toLowerCase().replace(/[.,?!]/g, "").trim();
             
+            // Step 2: Complex Contraction handling to match CSV data
             const contractions = {
-                "didnt":"did not", "doesnt":"does not", "dont":"do not",
-                "wont":"will not", "cant":"can not", "cannot":"can not",
-                "isnt":"is not", "arent":"are not", "wasnt":"was not", "werent":"were not",
-                "havent":"have not", "hasnt":"has not", "hadnt":"had not",
-                "shouldnt":"should not", "wouldnt":"would not", "couldnt":"could not"
+                "didn't":"did not", "didnt":"did not", "don't":"do not", "dont":"do not", "doesn't":"does not", "doesnt":"does not",
+                "won't":"will not", "wont":"will not", "can't":"can not", "cant":"can not", "cannot":"can not",
+                "isn't":"is not", "isnt":"is not", "aren't":"are not", "arent":"are not", "wasn't":"was not", "wasnt":"was not", "weren't":"were not", "werent":"were not",
+                "haven't":"have not", "havent":"have not", "hasn't":"has not", "hasnt":"has not", "hadn't":"had not", "hadnt":"had not",
+                "shouldn't":"should not", "shouldnt":"should not", "wouldn't":"would not", "wouldnt":"would not", "couldn't":"could not", "couldnt":"could not"
             };
             for(let k in contractions) s = s.replace(new RegExp("\\b"+k+"\\b","gi"), contractions[k]);
 
+            // Step 3: Specific Microphone Typo Fixes
             const micTypos = {
                 "modern": "modem",
                 "by the": "buy the"
             };
             for(let key in micTypos) s = s.replace(new RegExp("\\b"+key+"\\b","gi"), micTypos[key]);
 
+            // STEP 4 (THE FIX): Remove ALL indefinite and definite articles (a/an/the)
+            s = s.replace(/\b(a|an|the)\b/gi, "").trim();
+
+            // Step 5: Sanitize multiple spaces
             return s.replace(/\s+/g, " ").trim();
         }
 
         function checkAnswer(spoken) {
             const rawCorrect = currentPairs[currentIndex].en;
             
+            // Handle optional words in parentheses (e.g., '(a) car' can be 'a car' or 'car')
             const correctWithParenthesesText = rawCorrect.replace(/[\(\)]/g, "");
             const correctWithoutParenthesesText = rawCorrect.replace(/\([^)]*\)/g, " ");
 
+            // Apply the new, lax normalizer to all variants
             const normalizedSpoken = normalize(spoken);
             const isCorrect = (normalizedSpoken === normalize(correctWithParenthesesText)) || 
                               (normalizedSpoken === normalize(correctWithoutParenthesesText));
@@ -223,10 +232,9 @@
             showScreen('menu-screen');
         }
 
-        // --- THE PATIENCE TIMER ENGINE ---
+        // --- Speech Recognition Engine (With 3-Second Patience Timer) ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition;
-        
         let silenceTimer = null;
         let currentTranscript = "";
         let isListening = false;
@@ -234,8 +242,6 @@
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
             recognition.lang = 'en-US';
-            
-            // Force continuous listening and real-time word gathering
             recognition.continuous = true;
             recognition.interimResults = true;
             
@@ -247,7 +253,6 @@
                 btn.innerText = "🛑 Stop Listening"; 
                 document.getElementById('recognized-text').innerText = "Listening...";
                 
-                // Start a timer just in case they tap but never say anything
                 silenceTimer = setTimeout(() => {
                     if (isListening) toggleMic();
                 }, 5000); 
@@ -262,21 +267,21 @@
             };
             
             recognition.onresult = (e) => { 
-                // Clear the countdown every time they speak a new word
                 clearTimeout(silenceTimer);
                 currentTranscript = "";
-                
                 for (let i = 0; i < e.results.length; i++) {
                     currentTranscript += e.results[i][0].transcript;
                 }
-                
                 document.getElementById('recognized-text').innerText = "You said: " + currentTranscript;
                 
-                // Set the 3-SECOND SILENCE TIMER
                 silenceTimer = setTimeout(() => {
                     if (isListening) {
                         recognition.stop();
-                        checkAnswer(currentTranscript);
+                        if (currentTranscript.trim() !== "") {
+                            checkAnswer(currentTranscript);
+                        } else {
+                            document.getElementById('recognized-text').innerText = "Nothing heard. Try again.";
+                        }
                     }
                 }, 3000); 
             };
@@ -300,9 +305,7 @@
                 alert("Speech Recognition is not supported here.\n\niPhone Users: Please open this link in the REAL Safari or Chrome app.");
                 return;
             }
-            
             if (isListening) {
-                // MANUAL OVERRIDE: If they tap the button while it's listening, stop and grade immediately
                 clearTimeout(silenceTimer);
                 recognition.stop();
                 if (currentTranscript.trim() !== "") {
