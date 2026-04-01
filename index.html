@@ -43,13 +43,13 @@
             🇹🇷 Make sure your phone's keyboard/dictation is set to ENGLISH before speaking!
         </div>
         <br><button onclick="showScreen('instructions-screen')">Continue</button>
-        <div class="version-tag">Engine: Talkback Classic (Anti-Translate v6)</div>
+        <div class="version-tag">Engine: Talkback Classic (Acoustic Fix v7)</div>
     </div>
 
     <div id="instructions-screen" class="screen">
         <img src="%20instructions.jpg" alt="Instructions Image">
         <br><button onclick="showScreen('menu-screen')">Continue</button>
-        <div class="version-tag">Engine: Talkback Classic (Anti-Translate v6)</div>
+        <div class="version-tag">Engine: Talkback Classic (Acoustic Fix v7)</div>
     </div>
 
     <div id="menu-screen" class="screen">
@@ -57,7 +57,7 @@
         <div id="lesson-list"></div>
         <br>
         <button onclick="resetProgress()" style="background-color: #dc3545; font-size: 16px; padding: 10px 20px; margin-top: 30px;">⚠️ Reset All Progress</button>
-        <div class="version-tag">Engine: Talkback Classic (Anti-Translate v6)</div>
+        <div class="version-tag">Engine: Talkback Classic (Acoustic Fix v7)</div>
     </div>
 
     <div id="game-screen" class="screen">
@@ -78,7 +78,7 @@
         <button id="next-btn" onclick="nextSentence()" style="display:none; background-color: #007bff;">Next Sentence ➡️</button>
         <button id="finish-btn" onclick="finishLesson()" style="display:none; background-color: #28a745;">Finish Lesson 🎉</button>
         
-        <div class="version-tag">Engine: Talkback Classic (Anti-Translate v6)</div>
+        <div class="version-tag">Engine: Talkback Classic (Acoustic Fix v7)</div>
     </div>
 
     <script>
@@ -175,9 +175,18 @@
             };
             for(let k in contractions) s = s.replace(new RegExp("\\b"+k+"\\b","gi"), contractions[k]);
 
+            // EXPANDED ACOUSTIC GLITCH DICTIONARY
             const micTypos = {
                 "modern": "modem",
-                "by the": "buy the"
+                "by the": "buy the",
+                "well the": "will the",
+                "well he": "will he",
+                "well she": "will she",
+                "well it": "will it",
+                "well they": "will they",
+                "well you": "will you",
+                "well we": "will we",
+                "well i": "will i"
             };
             for(let key in micTypos) s = s.replace(new RegExp("\\b"+key+"\\b","gi"), micTypos[key]);
 
@@ -249,7 +258,6 @@
             recognition.onstart = () => {
                 isListening = true;
                 currentTranscript = "";
-                // Re-enforce language just in case mobile Safari dropped it
                 recognition.lang = 'en-US'; 
                 
                 const btn = document.getElementById('mic-btn');
@@ -278,7 +286,6 @@
                 }
                 
                 // THE TURKISH TRAP
-                // If the phone forces Turkish dictation, it will likely output Turkish characters
                 if (/[çğışöüÇĞIŞÖÜ]/.test(currentTranscript)) {
                     recognition.stop();
                     document.getElementById('recognized-text').innerText = "⚠️ LANGUAGE ERROR ⚠️";
@@ -325,7 +332,6 @@
                 clearTimeout(silenceTimer);
                 recognition.stop();
                 if (currentTranscript.trim() !== "") {
-                    // Make sure we aren't grading Turkish gibberish manually
                     if (!/[çğışöüÇĞIŞÖÜ]/.test(currentTranscript)) {
                         checkAnswer(currentTranscript);
                     }
@@ -334,7 +340,6 @@
                 }
             } else {
                 try {
-                    // Enforce English right before starting
                     recognition.lang = 'en-US';
                     recognition.start(); 
                 } catch(e) {
