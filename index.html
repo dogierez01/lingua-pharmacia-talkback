@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" translate="no">
+<html lang="en" translate="no" class="notranslate">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -31,7 +31,6 @@
         .tracker-box { background: #222; padding: 15px; border-radius: 10px; margin-bottom: 20px; display: inline-block; font-size: 22px; border: 1px solid #444; }
         
         .ios-warning { color: #ffc107; font-size: 18px; font-weight: bold; margin: 10px 20px 30px 20px; line-height: 1.4; background: rgba(255, 193, 7, 0.1); padding: 15px; border-radius: 8px; border: 1px solid #ffc107; }
-        
         .version-tag { font-size: 12px; color: #444; margin-top: 40px; }
     </style>
 </head>
@@ -40,16 +39,17 @@
     <div id="welcome-screen" class="screen active">
         <img src="logo.png" alt="Logo">
         <div class="ios-warning">
-            📱 iPhone Users: Please open this app directly in Safari or Chrome. Do not use the browser inside WhatsApp or Instagram, or your microphone will not work!
+            📱 iPhone Users: Please open this app directly in Safari or Chrome. Do not use WhatsApp/Instagram browsers.<br><br>
+            🇹🇷 Make sure your phone's keyboard/dictation is set to ENGLISH before speaking!
         </div>
         <br><button onclick="showScreen('instructions-screen')">Continue</button>
-        <div class="version-tag">Engine: Lax Grading v1</div>
+        <div class="version-tag">Engine: Talkback Classic (Anti-Translate v6)</div>
     </div>
 
     <div id="instructions-screen" class="screen">
         <img src="%20instructions.jpg" alt="Instructions Image">
         <br><button onclick="showScreen('menu-screen')">Continue</button>
-        <div class="version-tag">Engine: Lax Grading v1</div>
+        <div class="version-tag">Engine: Talkback Classic (Anti-Translate v6)</div>
     </div>
 
     <div id="menu-screen" class="screen">
@@ -57,7 +57,7 @@
         <div id="lesson-list"></div>
         <br>
         <button onclick="resetProgress()" style="background-color: #dc3545; font-size: 16px; padding: 10px 20px; margin-top: 30px;">⚠️ Reset All Progress</button>
-        <div class="version-tag">Engine: Lax Grading v1</div>
+        <div class="version-tag">Engine: Talkback Classic (Anti-Translate v6)</div>
     </div>
 
     <div id="game-screen" class="screen">
@@ -68,17 +68,17 @@
             Score: <span id="current-score" style="color:#28a745;">0</span>
         </div>
         
-        <div id="turkish-sentence"></div>
+        <div id="turkish-sentence" lang="tr"></div>
         
         <button id="mic-btn" onclick="toggleMic()">🎤 Tap to Speak</button>
         
-        <div id="recognized-text"></div>
-        <div id="feedback"></div>
+        <div id="recognized-text" lang="en"></div>
+        <div id="feedback" lang="en"></div>
         
         <button id="next-btn" onclick="nextSentence()" style="display:none; background-color: #007bff;">Next Sentence ➡️</button>
         <button id="finish-btn" onclick="finishLesson()" style="display:none; background-color: #28a745;">Finish Lesson 🎉</button>
         
-        <div class="version-tag">Engine: Lax Grading v1</div>
+        <div class="version-tag">Engine: Talkback Classic (Anti-Translate v6)</div>
     </div>
 
     <script>
@@ -146,6 +146,7 @@
                 });
                 
                 shuffleArray(currentPairs);
+                
                 document.getElementById('total-questions').innerText = currentPairs.length;
                 loadSentence();
             } catch (e) { alert("Error loading CSV file."); }
@@ -180,7 +181,6 @@
             };
             for(let key in micTypos) s = s.replace(new RegExp("\\b"+key+"\\b","gi"), micTypos[key]);
 
-            // REMOVE ARTICLES
             s = s.replace(/\b(a|an|the)\b/gi, "").trim();
 
             return s.replace(/\s+/g, " ").trim();
@@ -232,6 +232,7 @@
             showScreen('menu-screen');
         }
 
+        // --- SPEECH RECOGNITION (WITH TURKISH TRAP) ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition;
         let silenceTimer = null;
@@ -240,17 +241,21 @@
 
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
-            recognition.lang = 'en-US';
+            // HARD ENFORCE AMERICAN ENGLISH
+            recognition.lang = 'en-US'; 
             recognition.continuous = true;
             recognition.interimResults = true;
             
             recognition.onstart = () => {
                 isListening = true;
                 currentTranscript = "";
+                // Re-enforce language just in case mobile Safari dropped it
+                recognition.lang = 'en-US'; 
+                
                 const btn = document.getElementById('mic-btn');
                 btn.classList.add('listening');
                 btn.innerText = "🛑 Stop Listening"; 
-                document.getElementById('recognized-text').innerText = "Listening...";
+                document.getElementById('recognized-text').innerText = "Listening in English...";
                 
                 silenceTimer = setTimeout(() => {
                     if (isListening) toggleMic();
@@ -271,6 +276,18 @@
                 for (let i = 0; i < e.results.length; i++) {
                     currentTranscript += e.results[i][0].transcript;
                 }
+                
+                // THE TURKISH TRAP
+                // If the phone forces Turkish dictation, it will likely output Turkish characters
+                if (/[çğışöüÇĞIŞÖÜ]/.test(currentTranscript)) {
+                    recognition.stop();
+                    document.getElementById('recognized-text').innerText = "⚠️ LANGUAGE ERROR ⚠️";
+                    document.getElementById('feedback').innerHTML = "Your phone is typing in Turkish!<br>Please switch your keyboard/dictation to English.";
+                    document.getElementById('feedback').className = "incorrect";
+                    document.getElementById('mic-btn').innerText = "🎤 Tap to Retry";
+                    return;
+                }
+
                 document.getElementById('recognized-text').innerText = "You said: " + currentTranscript;
                 
                 silenceTimer = setTimeout(() => {
@@ -308,12 +325,17 @@
                 clearTimeout(silenceTimer);
                 recognition.stop();
                 if (currentTranscript.trim() !== "") {
-                    checkAnswer(currentTranscript);
+                    // Make sure we aren't grading Turkish gibberish manually
+                    if (!/[çğışöüÇĞIŞÖÜ]/.test(currentTranscript)) {
+                        checkAnswer(currentTranscript);
+                    }
                 } else {
                     document.getElementById('recognized-text').innerText = "Nothing heard. Try again.";
                 }
             } else {
                 try {
+                    // Enforce English right before starting
+                    recognition.lang = 'en-US';
                     recognition.start(); 
                 } catch(e) {
                     console.log("Mic already listening or interrupted.");
